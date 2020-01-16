@@ -3,11 +3,21 @@
 #include <BleKeyboard.h>
 #include <HardwareSerial.h>
 
-static const char BLE_DEVICE_NAME[] = "BNO055";
-BleKeyboard bleKeyboard;
+static const char BLE_DEVICE_NAME[] = "BNO055 Clicker";
+static const char PRESENTATION_PROGRAM_NAME[] = "Keynote";
+static const char BROWSER_PROGRAM_NAME[] = "Safari";
 
-Adafruit_BNO055 bno;
-boolean bnoConnected = false;
+typedef enum {
+  PRESENTATION_MODE = 1,
+  BROWSER_MODE,
+} Mode;
+
+static Mode mode = PRESENTATION_MODE;
+
+static BleKeyboard bleKeyboard;
+
+static Adafruit_BNO055 bno;
+static boolean bnoConnected = false;
 
 void setup() {
   Serial.begin(115200);
@@ -24,6 +34,17 @@ void setup() {
   bleKeyboard.begin();
 }
 
+static void sendSpotlight(const char message[]) {
+  bleKeyboard.press(KEY_LEFT_GUI);
+  bleKeyboard.press(' ');
+  delay(100);
+  bleKeyboard.releaseAll();
+  delay(100);
+  bleKeyboard.print(message);
+  bleKeyboard.write(KEY_RETURN);
+  delay(100);
+}
+
 void loop() {
   static bool firstTime = true;
   static sensors_vec_t prevOrient;
@@ -35,11 +56,11 @@ void loop() {
   const sensors_vec_t& orient = event.orientation;
   bno.getEvent(&event);
 
-  // Serial.print("X: ");
+  // Serial.print("x: ");
   // Serial.print(event.orientation.x, 4);
-  // Serial.print("\tY: ");
+  // Serial.print("\ty: ");
   // Serial.print(event.orientation.y, 4);
-  // Serial.print("\tZ: ");
+  // Serial.print("\tz: ");
   // Serial.print(event.orientation.z, 4);
   // Serial.println("");
   // delay(100);
@@ -50,20 +71,53 @@ void loop() {
   }
 
   if (orient.y < -45 && !(prevOrient.y < -45)) {
-    Serial.println("Sending switcher...");
-    bleKeyboard.press(KEY_LEFT_SHIFT);
-    bleKeyboard.press(KEY_LEFT_CTRL);
-    bleKeyboard.press('S');
-    delay(100);
-    bleKeyboard.releaseAll();
-  }
-  if (orient.z < -45 && !(prevOrient.z < -45)) {
-    Serial.println("Sending left arrow...");
-    bleKeyboard.write(KEY_LEFT_ARROW);
-  }
-  if (orient.z > 45 && !(prevOrient.z > 45)) {
-    Serial.println("Sending right arrow...");
-    bleKeyboard.write(KEY_RIGHT_ARROW);
+    switch (mode) {
+      case BROWSER_MODE:
+        Serial.println("Switching to Keynote");
+        mode = PRESENTATION_MODE;
+        sendSpotlight(PRESENTATION_PROGRAM_NAME);
+        // bleKeyboard.press(KEY_LEFT_ALT);
+        // bleKeyboard.press(KEY_LEFT_GUI);
+        // bleKeyboard.press('p');
+        // delay(100);
+        // bleKeyboard.releaseAll();
+        bleKeyboard.write(KEY_MEDIA_PLAY_PAUSE);
+        break;
+      case PRESENTATION_MODE:
+        Serial.println("Switching to browser");
+        mode = BROWSER_MODE;
+        bleKeyboard.press(KEY_LEFT_CTRL);
+        bleKeyboard.press(KEY_LEFT_SHIFT);
+        bleKeyboard.press('s');
+        delay(100);
+        bleKeyboard.releaseAll();
+        // bleKeyboard.write(KEY_MEDIA_STOP);
+        // delay(100);
+        // sendSpotlight(BROWSER_PROGRAM_NAME);
+    }
+  } else if (orient.y > 45 && !(prevOrient.y > 45)) {
+    Serial.println("Sending media play/pause");
+    bleKeyboard.write(KEY_MEDIA_PLAY_PAUSE);
+  } else if (orient.z < -45 && !(prevOrient.z < -45)) {
+    Serial.println("Sending left arrow");
+    if (mode == BROWSER_MODE) {
+      bleKeyboard.press(KEY_LEFT_GUI);
+      bleKeyboard.press(KEY_LEFT_SHIFT);
+      bleKeyboard.press('[');
+      delay(100);
+      bleKeyboard.releaseAll();
+    } else
+      bleKeyboard.write(KEY_LEFT_ARROW);
+  } else if (orient.z > 45 && !(prevOrient.z > 45)) {
+    Serial.println("Sending right arrow");
+    if (mode == BROWSER_MODE) {
+      bleKeyboard.press(KEY_LEFT_SHIFT);
+      bleKeyboard.press(KEY_LEFT_GUI);
+      bleKeyboard.press(']');
+      delay(100);
+      bleKeyboard.releaseAll();
+    } else
+      bleKeyboard.write(KEY_RIGHT_ARROW);
   }
   prevOrient = orient;
 }
