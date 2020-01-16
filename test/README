@@ -1,0 +1,9 @@
+# ESP32 Presentation Controller
+
+Configures an ESP32 with a connected BNO055 as a Bluetooth presentation
+controller.
+
+Gestures:
+- Roll left: Previous slide
+- Roll right: Next slide
+- Tilt back: Switch to browser
