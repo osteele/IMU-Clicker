@@ -3,6 +3,14 @@
 #include <BleKeyboard.h>
 #include <HardwareSerial.h>
 
+#ifdef FIREBEETLE
+#define SPICLK 22
+#define SPIDAT 21
+#else
+#define SPICLK 22
+#define SPIDAT 23
+#endif
+
 static const char BLE_DEVICE_NAME[] = "BNO055 Clicker";
 static const char PRESENTATION_PROGRAM_NAME[] = "Keynote";
 static const char BROWSER_PROGRAM_NAME[] = "Safari";
@@ -12,22 +20,20 @@ typedef enum {
   BROWSER_MODE,
 } Mode;
 
-static Mode mode = PRESENTATION_MODE;
-
-static BleKeyboard bleKeyboard;
-
 static Adafruit_BNO055 bno;
+static BleKeyboard bleKeyboard(BLE_DEVICE_NAME);
+static Mode mode = PRESENTATION_MODE;
 static boolean bnoConnected = false;
 
 void setup() {
   Serial.begin(115200);
 
-  Wire.begin(23, 22);
+  Wire.begin(SPIDAT, SPICLK);
   if (bno.begin()) {
     bnoConnected = true;
-    bno.printSensorDetails();
+    Serial.println("BNO055 connected");
   } else {
-    Serial.println("BNO055 not found");
+    Serial.printf("BNO055 not found at SPI CLK=%d DAT=%d\n", SPICLK, SPIDAT);
   }
 
   BLEDevice::init(BLE_DEVICE_NAME);
@@ -50,10 +56,10 @@ void loop() {
   static sensors_vec_t prevOrient;
 
   if (!bnoConnected) return;
-  if (!bleKeyboard.isConnected()) return;
+  // if (!bleKeyboard.isConnected()) return;
 
   sensors_event_t event;
-  const sensors_vec_t& orient = event.orientation;
+  const sensors_vec_t &orient = event.orientation;
   bno.getEvent(&event);
 
   // Serial.print("x: ");
